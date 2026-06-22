@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabase";
-import { notifyNewLead } from "../../../lib/notify";
+import { notifyNewLead, sendLeadAutoReply } from "../../../lib/notify";
 
 export const runtime = "nodejs";
 
@@ -34,7 +34,10 @@ export async function POST(req: Request) {
       .from("leads")
       .insert({ name, company: company || null, email, message: message || null });
     if (error) throw error;
-    await notifyNewLead({ name, company, email, message });
+    await Promise.allSettled([
+      notifyNewLead({ name, company, email, message }),
+      sendLeadAutoReply({ name, company, email, message }),
+    ]);
     return NextResponse.json({ ok: true });
   } catch (e) {
     console.error("lead insert failed:", e);
